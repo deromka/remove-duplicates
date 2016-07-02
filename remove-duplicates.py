@@ -16,7 +16,7 @@ import multiprocessing
 
 
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.WARNING)
+logging.basicConfig(format='%(levelname)s:%(threadName)s:%(message)s', level=logging.WARNING)
 # create logger
 logger = logging.getLogger('remove-duplicates')
 logger.setLevel(logging.INFO)
@@ -25,7 +25,7 @@ logger.setLevel(logging.INFO)
 pool = None
 
 def getPoolSize():
-    return multiprocessing.cpu_count()*2
+    return 50
 
 def createPool():
     global pool
@@ -156,13 +156,13 @@ def check_file_hash(args, stats, file, fileshash, movedir):
 def hash_dir(args, stats, dir, fileshash):
     abs_dir = os.path.abspath(dir)
     start = time.time()
-    logger.info("Processing folder {} ...".format(abs_dir))
+    logger.info("Hashing folder {} ...".format(abs_dir))
     for root, subdirs, files in os.walk(abs_dir):
         logger.debug(subdirs)
         logger.debug(files)
 
-        for subdir in subdirs:
-            getPool().submit(hash_dir(args, stats, os.path.join(root, subdir), fileshash))
+        if len(subdirs) > 0:
+            getPool().map(lambda subdir: hash_dir(args, stats, os.path.join(root, subdir), fileshash), subdirs)
 
         for f in files:
             file_path = os.path.join(root, f)
@@ -176,13 +176,13 @@ def check_dir_hash(args, stats, dir, fileshash, movedir):
     try:
         abs_dir = os.path.abspath(dir)
         start = time.time()
-        logger.info("Processing folder {} ...".format(abs_dir))
+        logger.info("Checking hashes in folder {} ...".format(abs_dir))
         for root, subdirs, files in os.walk(abs_dir):
             logger.debug(subdirs)
             logger.debug(files)
 
-            for subdir in subdirs:
-                getPool().submit(check_dir_hash(args, stats, os.path.join(root, subdir), fileshash, movedir))
+            if len(subdirs) > 0:
+                getPool().map(lambda subdir: check_dir_hash(args, stats, os.path.join(root, subdir), fileshash, movedir), subdirs)
 
             for f in files:
                 file_path = os.path.join(root, f)
